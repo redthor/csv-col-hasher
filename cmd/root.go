@@ -1,9 +1,14 @@
 package cmd
 
 import (
-	"github.com/redthor/csv-col-hasher/csv"
+	"encoding/hex"
 	"github.com/spf13/cobra"
+	"io"
+	"io/ioutil"
 	"log"
+	"os"
+	"encoding/csv"
+	"crypto/sha1"
 )
 
 // rootCmd represents the base command when called without any subcommands
@@ -25,8 +30,6 @@ func init() {
 	_ = rootCmd.MarkFlagRequired("col-num")
 }
 
-// Execute adds all child commands to the root command and sets flags appropriately.
-// This is called by main.main(). It only needs to happen once to the rootCmd.
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
 		log.Fatal(err)
@@ -34,19 +37,68 @@ func Execute() {
 }
 
 func hash(cmd *cobra.Command, args []string) {
-	c := csv.ParseCsv(csvFile)
+	outputFile, err := ioutil.TempFile("", "output.*.csv")
 
-	// Check that the file has some records
-	select {
-		case first := <- c:
-			if (int(colNum) > len(first)) {
-				log.Fatalf("Col number %d is out of range of record length %d", colNum, len(first))
+	if (err != nil) {
+		log.Fatal("Error opening output file")
+	}
+	defer outputFile.Close()
+
+	log.Printf("Processing column %d in '%s' and writing to %s", colNum, csvFile, outputFile.Name())
+
+	c := make(chan []string)
+	go parseCsv(csvFile, c)
+
+	h := sha1.New()
+	writer := csv.NewWriter(outputFile)
+	first := true
+
+	for csvLine := range c {
+		if (first) {
+			if err := writer.Write(csvLine); err != nil {
+				log.Fatalln("error writing record to csv:", err)
 			}
-		default:
-			log.Fatal("No records")
+			first = false
+			continue
+		}
+		toConvert := csvLine[colNum]
+		h.Write([]byte(toConvert))
+		csvLine[colNum] = hex.EncodeToString(h.Sum(nil))
+		if err := writer.Write(csvLine); err != nil {
+			log.Fatalln("error writing record to csv:", err)
+		}
+
+		h.Reset()
 	}
 
-	for csvLine := range csv.ParseCsv(csvFile) {
-		log.Println(csvLine[colNum])
+	writer.Flush()
+	if err := writer.Error(); err != nil {
+		log.Fatalf("Error flushing csv '%s'", err.Error())
+	}
+
+	log.Printf("Finished writing '%s'", outputFile.Name())
+}
+
+func parseCsv(filename string, c chan []string) {
+	defer close(c)
+
+	f, err := os.Open(filename)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer f.Close()
+
+	reader := csv.NewReader(f)
+
+	for {
+		record, err := reader.Read()
+		if (err == io.EOF) {
+			break
+		}
+		if (err != nil) {
+			log.Fatal(err)
+		}
+
+		c <- record
 	}
 }
