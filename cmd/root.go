@@ -1,7 +1,7 @@
 package cmd
 
 import (
-	"csv-col-hasher/csv"
+	"github.com/redthor/csv-col-hasher/csv"
 	"github.com/spf13/cobra"
 	"log"
 )

@@ -18,7 +18,7 @@ help:
 ##---------------------------------------------------------------------------
 
 run:                     ## Run the program
-	$(GO_BIN) run main.go run files/test
+	$(GO_BIN) run main.go -f tests/fixtures/test.csv -n 0
 
 test:                    ## Run the tests
 	$(GO_BIN) test ./...

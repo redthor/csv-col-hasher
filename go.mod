@@ -1,4 +1,4 @@
-module csv-col-hasher
+module github.com/redthor/csv-col-hasher
 
 go 1.12
 
