@@ -26,7 +26,7 @@ func init() {
 	cobra.OnInitialize()
 	rootCmd.Flags().StringVarP(&csvFile, "csv-file", "f", "", "The CSV file to read")
 	_ = rootCmd.MarkFlagRequired("csv-file")
-	rootCmd.Flags().Uint16VarP(&colNum, "col-num", "n", 0, "The column to replace with hashed values, first is 0")
+	rootCmd.Flags().Uint16VarP(&colNum, "col-num", "n", 0, "The column to replace with hashed values, first col index is 0")
 	_ = rootCmd.MarkFlagRequired("col-num")
 	rootCmd.Flags().StringVarP(&outputFile, "output-file", "o", "", "The CSV file to write to. If not set it will print to stdout")
 }
