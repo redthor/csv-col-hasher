@@ -20,13 +20,13 @@ var rootCmd = &cobra.Command{
 
 var csvFile string
 var outputFile string
-var colNum uint16
+var colNums []uint
 
 func init() {
 	cobra.OnInitialize()
 	rootCmd.Flags().StringVarP(&csvFile, "csv-file", "f", "", "The CSV file to read")
 	_ = rootCmd.MarkFlagRequired("csv-file")
-	rootCmd.Flags().Uint16VarP(&colNum, "col-num", "n", 0, "The column to replace with hashed values, first col index is 0")
+	rootCmd.Flags().UintSliceVarP(&colNums, "col-num", "n", []uint{}, "The column to replace with hashed values, first col index is 0. Can be repeated, e.g. -n 3 -n 5")
 	_ = rootCmd.MarkFlagRequired("col-num")
 	rootCmd.Flags().StringVarP(&outputFile, "output-file", "o", "", "The CSV file to write to. If not set it will print to stdout")
 }
@@ -38,7 +38,7 @@ func Execute() {
 }
 
 func hash(cmd *cobra.Command, args []string) {
-	log.Printf("Processing column %d in '%s'", colNum, csvFile)
+	log.Printf("Processing columns %x in '%s'", colNums, csvFile)
 
 	out := createOutputWriter(outputFile)
 	defer out.Flush()
@@ -56,14 +56,17 @@ func hash(cmd *cobra.Command, args []string) {
 			first = false
 			continue
 		}
-		toConvert := csvLine[colNum]
-		h.Write([]byte(toConvert))
-		csvLine[colNum] = hex.EncodeToString(h.Sum(nil))
+
+		for _, colNum := range colNums {
+			toConvert := csvLine[colNum]
+			h.Write([]byte(toConvert))
+			csvLine[colNum] = hex.EncodeToString(h.Sum(nil))
+			h.Reset()
+		}
+
 		if err := out.Write(csvLine); err != nil {
 			log.Fatalln("error writing record to csv:", err)
 		}
-
-		h.Reset()
 	}
 	out.Flush()
 
